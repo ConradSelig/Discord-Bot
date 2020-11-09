@@ -2,6 +2,7 @@
 import os
 
 import discord
+import random
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,20 +16,18 @@ async def on_ready():
         if guild.name == GUILD:
             break
 
-    print(client.user, "is connected to the following build: ")
-    print(guild.name, "(id: " + str(guild.id) + ")")
-
-    members = '\n - '.join([member.name for member in guild.members])
-    print(f'Guild Members:\n - {members}')
+    print("Connected.\n\n")
 
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
 
-    response = "pong!"
-
-    if message.content == 'ping':
-        await message.channel.send(response)
+    if message.content == 'pog' or message.content == "Pog":
+        pog_images = ["fish_pog.jpg", "pure_pog.png", "pepe_pog.png", "le_pog.jpeg"]
+        index = random.randint(0, len(pog_images) - 1)
+        
+        print("Pogging! " + str(index))
+        await message.channel.send(file=discord.File("./Pog_Images/" + pog_images[index]))
 
 client.run(TOKEN)
