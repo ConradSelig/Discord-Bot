@@ -90,11 +90,12 @@ async def on_message(message):
     '''
     Meme reactions. Adds a thumbs up and a thumbs down to posted memes. 
     Only adds reactions to messages compliant with the following restrictions:
-        1. Message must be in a channel that is in a category with "memes" in the name.
+        1. Message must be in a channel that is in a category with "memes" in the name -OR-
+        1b. The channel name itself must be "memes" (lowered)
         2. Message must have an image attached -OR-
-        3. Message must be a url link with no other text.
+        2b. Message must be a url link with no other text.
     '''
-    if "memes" in category.name.lower():
+    if "memes" == channel.name.lower() or "memes" in category.name.lower():
         print("Possible meme detected...")
         # create a parse object to detect if the message is a url
         url_parse = urlparse(message.content)
