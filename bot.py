@@ -3,6 +3,7 @@ import os
 
 import discord
 import random
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,10 +25,13 @@ async def on_message(message):
         return
 
     if message.content == 'pog' or message.content == "Pog":
-        pog_images = ["fish_pog.jpg", "pure_pog.png", "pepe_pog.png", "le_pog.jpeg"]
+        pog_images = os.listdir("./Pog_Images/")
         index = random.randint(0, len(pog_images) - 1)
         
         print("Pogging! " + str(index))
         await message.channel.send(file=discord.File("./Pog_Images/" + pog_images[index]))
+
+    if message.content == "pog count":
+        await message.channel.send("I currently know " + str(len(os.listdir("./Pog_Images/"))) + " different ways to Pog.")
 
 client.run(TOKEN)
