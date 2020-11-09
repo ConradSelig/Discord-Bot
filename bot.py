@@ -1,8 +1,10 @@
 # bot.py
 import os
+import random
 
 import discord
-import random
+from discord.ext.commands import Bot
+from discord.ext import commands
 
 from dotenv import load_dotenv
 
@@ -17,6 +19,7 @@ async def on_ready():
         if guild.name == GUILD:
             break
 
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='you ʕ•ᴥ•ʔ'))
     print("Connected.\n\n")
 
 @client.event
