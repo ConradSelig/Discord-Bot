@@ -34,6 +34,27 @@ async def on_message(message):
     category = channel.category
 
     '''
+    Print the help text
+    '''
+    if message.content.lower() == "pogbot help":
+        padding = 60
+        response = "You're using Pogbot version " + os.getenv('VERSION') + ". Pog!\n\n"
+        response += "Commands in this version:\n"
+        response += "\t- Pogbot help: Display this text.\n"
+        response += "\t- Pog: Reply to someone saying \"pog\" with a random image of a pog.\n"
+        response += "\t- Pog count: Print the number of ways I currently know how to reply to the Pog command\n"
+        response += "\t- List roles: Display roles available to join.\n"
+        response += "\t- **Join role [role name | roll id]**: Join a roll based off its name or number (from the list roles command).\n"
+        response += "\t- **Leave role [role name | roll id]**: Leave a roll based off its name or number (from the list roles command).\n"
+        response += "\t- **Add role [role name]**: Create a new roll and automatically join it.\n"
+        response += "\t- **Delete role [role name | roll id]**: Delete a roll based off its name or number (from the list roles command). Only the original creator of a roll can delete that roll.\n"
+        response += "\t- Pogbot call poll. [poll prompt]: Create a yes / no poll with the given prompt.\n"
+        response += "\n_Commands in bold are planned commands, and are not currently implimented._"
+
+        print("Displaying help text.")
+        await message.channel.send(response)
+
+    '''
     Post a pog image to pog messages. An image is only posted if the only text in the image is "pog" (lowered)
     '''
     if message.content.lower() == 'pog':
@@ -49,7 +70,7 @@ async def on_message(message):
     '''
     Print how many different pog reactions there are
     '''
-    if message.content == "pog count":
+    if message.content.lower() == "pog count":
         await message.channel.send("I currently know " + str(len(os.listdir("./Pog_Images/"))) + " different ways to Pog.")
 
     '''
