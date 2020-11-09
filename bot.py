@@ -33,27 +33,45 @@ async def on_message(message):
     channel = message.channel
     category = channel.category
 
-    if message.content == 'pog' or message.content == "Pog":
+    '''
+    Post a pog image to pog messages. An image is only posted if the only text in the image is "pog" (lowered)
+    '''
+    if message.content.lower() == 'pog':
+        # get a list of all possible images
         pog_images = os.listdir("./Pog_Images/")
+        # get a random index in the list
         index = random.randint(0, len(pog_images) - 1)
         
         print("Pogging! " + str(index))
+        # post the random image
         await message.channel.send(file=discord.File("./Pog_Images/" + pog_images[index]))
 
+    '''
+    Print how many different pog reactions there are
+    '''
     if message.content == "pog count":
         await message.channel.send("I currently know " + str(len(os.listdir("./Pog_Images/"))) + " different ways to Pog.")
 
+    '''
+    List available roles for joining. A roll must be compliant with the following restrictions to show up in the list:
+        1. Not be @everyone
+        2. Have a color of #000000 (default color)
+    '''
     if message.content == "list roles":
+        # get the guild object this message was posted in
         guild = client.get_guild(message.guild.id)
+        # get all roles in the guild
         all_roles = guild.roles
         roles = []
 
+        # filter out all roles not following restrictions
         for role in all_roles:
             if str(role.color) == "#000000" and role.name != "@everyone":
                 roles.append(role)
 
         response = "";
         
+        # if block formats text based off how many available roles there are
         if len(roles) == 0:
             response = "This server has no general roles."
         elif len(roles) == 1:
@@ -66,6 +84,7 @@ async def on_message(message):
                 response += "\t" + str(i+1) + ". " + role.name + "\n"
 
         print("Printing roles. (" + str(len(roles)) + " roles printed)")
+        # reply with the list of roles
         await message.channel.send(response)
 
     '''
