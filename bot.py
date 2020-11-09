@@ -111,4 +111,26 @@ async def on_message(message):
             await message.add_reaction("👎")
         print("\tDone.")
 
+    '''
+    Poll setup. This will be for just yes / no polls. Only looks for messages that start with "Pogbot call poll."
+    '''
+    if message.content.startswith("Pogbot call poll."):
+        # @here so everyone in the channel gets notified a poll is active
+        response = "@here\n"
+        # Add the prompt to the poll (without the trigger phrase)
+        response += message.content.replace("Pogbot call poll.","")
+
+        # send the message, and store it so we can add the reactions
+        msg = await message.channel.send(response)
+        
+        # delete the message that sent the poll, so only the poll is shown
+        await message.delete()
+
+        # add the reactions:
+        # thumbs up
+        await msg.add_reaction("👍")
+        # thumbs down
+        await msg.add_reaction("👎")
+
+
 client.run(TOKEN)
