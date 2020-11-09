@@ -7,6 +7,7 @@ from discord.ext.commands import Bot
 from discord.ext import commands
 
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -28,6 +29,9 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
+
+    channel = message.channel
+    category = channel.category
 
     if message.content == 'pog' or message.content == "Pog":
         pog_images = os.listdir("./Pog_Images/")
@@ -63,5 +67,28 @@ async def on_message(message):
 
         print("Printing roles. (" + str(len(roles)) + " roles printed)")
         await message.channel.send(response)
+
+    '''
+    Meme reactions. Adds a thumbs up and a thumbs down to posted memes. 
+    Only adds reactions to messages compliant with the following restrictions:
+        1. Message must be in a channel that is in a category with "memes" in the name.
+        2. Message must have an image attached -OR-
+        3. Message must be a url link with no other text.
+    '''
+    if "memes" in category.name.lower():
+        print("Possible meme detected...")
+        # create a parse object to detect if the message is a url
+        url_parse = urlparse(message.content)
+        # evaluate the parse result
+        is_url = url_parse.scheme != "" and url_parse.netloc != ""
+        # if the message follows the restrictions
+        if len(message.attachments) == 1 or is_url:
+            print("\tAdding rating reactions.")
+            # add the reactions:
+            # thumbs up
+            await message.add_reaction("👍")
+            # thumbs down
+            await message.add_reaction("👎")
+        print("\tDone.")
 
 client.run(TOKEN)
