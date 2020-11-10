@@ -47,7 +47,7 @@ async def on_message(message):
         response += "\t- Pog count: Print the number of ways I currently know how to reply to the Pog command\n"
         response += "\t- List roles: Display roles available to join.\n"
         response += "\t- Join role [role name | roll id]: Join a roll based off its name or number (from the list roles command).\n"
-        response += "\t- **Leave role [role name | roll id]**: Leave a roll based off its name or number (from the list roles command).\n"
+        response += "\t- Leave role [role name | roll id]: Leave a roll based off its name or number (from the list roles command).\n"
         response += "\t- **Add role [role name]**: Create a new roll and automatically join it.\n"
         response += "\t- **Delete role [role name | roll id]**: Delete a roll based off its name or number (from the list roles command). Only the original creator of a roll can delete that roll.\n"
         response += "\t- Pogbot call poll. [poll prompt]: Create a yes / no poll with the given prompt.\n"
@@ -168,6 +168,58 @@ async def on_message(message):
         await message.channel.send(response)
         print("Done.")
 
+    '''
+    Leave role command handling
+    '''
+    if "leave role" in message.content.lower():
+        print("Attempting to remove someone from a roll...")
+        user = message.author
+        role_parse = message.content.lower().replace("leave role ", "")
+        using_id = True
+        task_completed = False
+        roles = get_roles(message)
+        
+        # detect if the user is adding a role by name or by id
+        try:
+            role_parse = int(role_parse) - 1
+        except ValueError:
+            using_id = False
+
+        # if using id
+        if using_id:
+            # catches invalid ids
+            try:
+                # get the role name
+                selected_role = roles[role_parse] # need try except block here
+                print("\tRemoving role from user (by id): " + selected_role)
+                # sift through server roles for a match
+                for server_role in message.guild.roles:
+                    if server_role.name.lower() == selected_role:
+                        # add matched role
+                        await user.remove_roles(server_role)
+                response = "Can do! I've removed the role \"" + selected_role + "\" for you."
+            except IndexError:
+                print("\tIndex error. Aborting.")
+                response = "I could not find a role with that id, sorry!"
+        # if using name
+        else:
+            # need to make sure the given name is a roll, so look through known roles
+            for role in roles:
+                # if the given role is a known role
+                if role == role_parse:
+                    print("\tRemoving role from user: " + role)
+                    # sift through the server roles for a match
+                    for server_role in message.guild.roles:
+                        if server_role.name.lower() == role:
+                            # add matched role
+                            await user.remove_roles(server_role)
+                    response = "Can do! I've removed the role \"" + selected_role + "\" for you."
+                    task_completed = True
+            # if the given role is not a known role
+            if not task_completed:
+                response = "I could not find a role with that name, sorry!"
+        await message.channel.send(response)
+        print("Done.")
 
     '''
     Meme reactions. Adds a thumbs up and a thumbs down to posted memes. 
