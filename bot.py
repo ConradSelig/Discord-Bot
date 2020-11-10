@@ -1,10 +1,12 @@
 # bot.py
 import os
+import re
 import random
 
 import discord
 from discord.ext.commands import Bot
 from discord.ext import commands
+from discord.utils import get
 
 from dotenv import load_dotenv
 from urllib.parse import urlparse
@@ -44,12 +46,17 @@ async def on_message(message):
         response += "\t- Pog: Reply to someone saying \"pog\" with a random image of a pog.\n"
         response += "\t- Pog count: Print the number of ways I currently know how to reply to the Pog command\n"
         response += "\t- List roles: Display roles available to join.\n"
-        response += "\t- **Join role [role name | roll id]**: Join a roll based off its name or number (from the list roles command).\n"
+        response += "\t- Join role [role name | roll id]: Join a roll based off its name or number (from the list roles command).\n"
         response += "\t- **Leave role [role name | roll id]**: Leave a roll based off its name or number (from the list roles command).\n"
         response += "\t- **Add role [role name]**: Create a new roll and automatically join it.\n"
         response += "\t- **Delete role [role name | roll id]**: Delete a roll based off its name or number (from the list roles command). Only the original creator of a roll can delete that roll.\n"
         response += "\t- Pogbot call poll. [poll prompt]: Create a yes / no poll with the given prompt.\n"
-        response += "\n_Commands in bold are planned commands, and are not currently implimented._"
+        response += "\nExample commands:\n"
+        response += "\t\"Join role 3\"\n"
+        response += "\t\"Leave role nsfw\"\n"
+        response += "\t\"Pogbot Call Poll. Is fish pog better than normal pog?\"\n"
+        response += "\n"
+        response += "_Commands in bold are planned commands, and are not currently implimented._"
 
         print("Displaying help text.")
         await message.channel.send(response)
@@ -109,6 +116,60 @@ async def on_message(message):
         await message.channel.send(response)
 
     '''
+    Join role command handling
+    '''
+    if "join role" in message.content.lower():
+        print("Attempting to add someone to a roll...")
+        user = message.author
+        role_parse = message.content.lower().replace("join role ", "")
+        using_id = True
+        task_completed = False
+        roles = get_roles(message)
+        
+        # detect if the user is adding a role by name or by id
+        try:
+            role_parse = int(role_parse) - 1
+        except ValueError:
+            using_id = False
+
+        # if using id
+        if using_id:
+            # catches invalid ids
+            try:
+                # get the role name
+                selected_role = roles[role_parse] # need try except block here
+                print("\tAdding user to roll (by id): " + selected_role)
+                # sift through server roles for a match
+                for server_role in message.guild.roles:
+                    if server_role.name.lower() == selected_role:
+                        # add matched role
+                        await user.add_roles(server_role)
+                response = "You got it boss! I've added you to the \"" + selected_role + "\" roll."
+            except IndexError:
+                print("\tIndex error. Aborting.")
+                response = "I could not find a role with that id, sorry!"
+        # if using name
+        else:
+            # need to make sure the given name is a roll, so look through known roles
+            for role in roles:
+                # if the given role is a known role
+                if role == role_parse:
+                    print("\tAdding user to roll: " + role)
+                    # sift through the server roles for a match
+                    for server_role in message.guild.roles:
+                        if server_role.name.lower() == role:
+                            # add matched role
+                            await user.add_roles(server_role)
+                    response = "You got it boss! I've added you to the \"" + role + "\" roll."
+                    task_completed = True
+            # if the given role is not a known role
+            if not task_completed:
+                response = "I could not find a role with that name, sorry!"
+        await message.channel.send(response)
+        print("Done.")
+
+
+    '''
     Meme reactions. Adds a thumbs up and a thumbs down to posted memes. 
     Only adds reactions to messages compliant with the following restrictions:
         1. Message must be in a channel that is in a category with "memes" in the name -OR-
@@ -135,11 +196,14 @@ async def on_message(message):
     '''
     Poll setup. This will be for just yes / no polls. Only looks for messages that start with "Pogbot call poll."
     '''
-    if message.content.startswith("Pogbot call poll."):
+    if message.content.lower().startswith("pogbot call poll."):
+        print("Running a poll.")
         # @here so everyone in the channel gets notified a poll is active
         response = "@here\n"
         # Add the prompt to the poll (without the trigger phrase)
-        response += message.content.replace("Pogbot call poll.","")
+        prompt = re.compile(re.escape("pogbot call poll."), re.IGNORECASE)
+        prompt = prompt.sub("", message.content)
+        response += prompt + "\n"
 
         # send the message, and store it so we can add the reactions
         msg = await message.channel.send(response)
@@ -153,5 +217,19 @@ async def on_message(message):
         # thumbs down
         await msg.add_reaction("👎")
 
+
+def get_roles(message):
+    # get the guild object this message was posted in
+    guild = client.get_guild(message.guild.id)
+    # get all roles in the guild
+    all_roles = guild.roles
+    roles = []
+
+    # filter out all roles not following restrictions
+    for role in all_roles:
+        if str(role.color) == "#000000" and role.name != "@everyone":
+            roles.append(role.name.lower())
+    
+    return roles
 
 client.run(TOKEN)
