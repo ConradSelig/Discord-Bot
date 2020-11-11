@@ -51,6 +51,7 @@ async def on_message(message):
         response += "\t- Add role [role name]: Create a new roll and automatically join it.\n"
         response += "\t- **Delete role [role name | roll id]**: Delete a roll based off its name or number (from the list roles command). Only the original creator of a roll can delete that roll.\n"
         response += "\t- Pogbot call poll. [poll prompt]: Create a yes / no poll with the given prompt.\n"
+        response += "\t- Pogbot stats for nerds: Print out some info about the project, nerdy!\n"
         response += "\nExample commands:\n"
         response += "\t\"Join role 3\"\n"
         response += "\t\"Leave role nsfw\"\n"
@@ -187,9 +188,11 @@ async def on_message(message):
     '''
     HIDDEN COMMAND: cloc
     '''
-    if message.content == "cloc":
-        print("Clocing")
+    if message.content.lower() == "pogbot stats for nerds":
+        print("Someone is a nerd!")
         await message.channel.send(os.popen("cloc .").read()) 
+        await message.channel.send("\n_____\n") 
+        await message.channel.send(os.popen("tree .").read()) 
 
     # add a newline between each log, this should always be the last thing this function does.
     print("-\n")
