@@ -24,7 +24,7 @@ async def on_ready():
 
     await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='you ʕ•ᴥ•ʔ'))
     print("Connected.")
-    print("Guilds:", client.guilds)
+    print("Now active in " + str(len(client.guilds)) + " guilds.")
     print("\n==============================\n")
 
 @client.event
@@ -119,107 +119,14 @@ async def on_message(message):
     Join role command handling
     '''
     if "join role" in message.content.lower():
-        print("Attempting to add someone to a roll...")
-        user = message.author
-        role_parse = message.content.lower().replace("join role ", "")
-        using_id = True
-        task_completed = False
-        roles = get_roles(message)
-        
-        # detect if the user is adding a role by name or by id
-        try:
-            role_parse = int(role_parse) - 1
-        except ValueError:
-            using_id = False
+        await RoleManager.join_role(message)
 
-        # if using id
-        if using_id:
-            # catches invalid ids
-            try:
-                # get the role name
-                selected_role = roles[role_parse] # need try except block here
-                print("\tAdding user to roll (by id): " + selected_role)
-                # sift through server roles for a match
-                for server_role in message.guild.roles:
-                    if server_role.name.lower() == selected_role:
-                        # add matched role
-                        await user.add_roles(server_role)
-                response = "You got it boss! I've added you to the \"" + selected_role + "\" roll."
-            except IndexError:
-                print("\tIndex error. Aborting.")
-                response = "I could not find a role with that id, sorry!"
-        # if using name
-        else:
-            # need to make sure the given name is a roll, so look through known roles
-            for role in roles:
-                # if the given role is a known role
-                if role == role_parse:
-                    print("\tAdding user to roll: " + role)
-                    # sift through the server roles for a match
-                    for server_role in message.guild.roles:
-                        if server_role.name.lower() == role:
-                            # add matched role
-                            await user.add_roles(server_role)
-                    response = "You got it boss! I've added you to the \"" + role + "\" roll."
-                    task_completed = True
-            # if the given role is not a known role
-            if not task_completed:
-                response = "I could not find a role with that name, sorry!"
-        await message.channel.send(response)
-        print("Done.")
-
+    
     '''
     Leave role command handling
     '''
     if "leave role" in message.content.lower():
-        print("Attempting to remove someone from a roll...")
-        user = message.author
-        role_parse = message.content.lower().replace("leave role ", "")
-        using_id = True
-        task_completed = False
-        roles = get_roles(message)
-        
-        # detect if the user is adding a role by name or by id
-        try:
-            role_parse = int(role_parse) - 1
-        except ValueError:
-            using_id = False
-
-        # if using id
-        if using_id:
-            # catches invalid ids
-            try:
-                # get the role name
-                selected_role = roles[role_parse] # need try except block here
-                print("\tRemoving role from user (by id): " + selected_role)
-                # sift through server roles for a match
-                for server_role in message.guild.roles:
-                    if server_role.name.lower() == selected_role:
-                        # add matched role
-                        await user.remove_roles(server_role)
-                response = "Can do! I've removed the role \"" + selected_role + "\" for you."
-            except IndexError:
-                print("\tIndex error. Aborting.")
-                response = "I could not find a role with that id, sorry!"
-        # if using name
-        else:
-            # need to make sure the given name is a roll, so look through known roles
-            for role in roles:
-                # if the given role is a known role
-                if role == role_parse:
-                    print("\tRemoving role from user: " + role)
-                    # sift through the server roles for a match
-                    for server_role in message.guild.roles:
-                        if server_role.name.lower() == role:
-                            # add matched role
-                            await user.remove_roles(server_role)
-                    response = "Can do! I've removed the role \"" + selected_role + "\" for you."
-                    task_completed = True
-            # if the given role is not a known role
-            if not task_completed:
-                response = "I could not find a role with that name, sorry!"
-        await message.channel.send(response)
-        print("Done.")
+        await RoleManager.leave_role(message)
 
     '''
     Meme reactions. Adds a thumbs up and a thumbs down to posted memes. 
@@ -269,19 +176,145 @@ async def on_message(message):
         # thumbs down
         await msg.add_reaction("👎")
 
+'''
+RoleManager is a singleton.
+Private:
+    __instance
+    __db_path (default is ./roles.owners)
+    __roles_metadata
+    __get_roles(message)
+    __new__()
+Public:
+    join_role(message)
+    leave_role(message)
+    add_role(message)
+    delete_role(message)
+'''
+class RoleManager(object):
+    __instance = None
+    def __new__(cls):
+        if RoleManager.__instance is None:
+            RoleManager.__instance = object.__new__(cls)
+        return RoleManager.__instance
 
-def get_roles(message):
-    # get the guild object this message was posted in
-    guild = client.get_guild(message.guild.id)
-    # get all roles in the guild
-    all_roles = guild.roles
-    roles = []
-
-    # filter out all roles not following restrictions
-    for role in all_roles:
-        if str(role.color) == "#000000" and role.name != "@everyone":
-            roles.append(role.name.lower())
+    def __get_roles(self, message):
+        # get the guild object this message was posted in
+        guild = client.get_guild(message.guild.id)
+        # get all roles in the guild
+        all_roles = guild.roles
+        roles = []
     
-    return roles
+        # filter out all roles not following restrictions
+        for role in all_roles:
+            if str(role.color) == "#000000" and role.name != "@everyone":
+                roles.append(role.name.lower())
+        
+        return roles
+
+    async def join_role(message):
+        print("Attempting to add someone to a roll...")
+        self = RoleManager()
+        user = message.author
+        role_parse = message.content.lower().replace("join role ", "")
+        using_id = True
+        task_completed = False
+        roles = self.__get_roles(message)
+        
+        # detect if the user is adding a role by name or by id
+        try:
+            role_parse = int(role_parse) - 1
+        except ValueError:
+            using_id = False
+
+        # if using id
+        if using_id:
+            # catches invalid ids
+            try:
+                # get the role name
+                selected_role = roles[role_parse] # need try except block here
+                print("\tAdding user to roll (by id): " + selected_role)
+                # sift through server roles for a match
+                for server_role in message.guild.roles:
+                    if server_role.name.lower() == selected_role:
+                        # add matched role
+                        await user.add_roles(server_role)
+                response = "You got it boss! I've added you to the \"" + selected_role + "\" roll."
+            except IndexError:
+                print("\tIndex error. Aborting.")
+                response = "I could not find a role with that id, sorry!"
+        # if using name
+        else:
+            # need to make sure the given name is a roll, so look through known roles
+            for role in roles:
+                # if the given role is a known role
+                if role == role_parse:
+                    print("\tAdding user to roll: " + role)
+                    # sift through the server roles for a match
+                    for server_role in message.guild.roles:
+                        if server_role.name.lower() == role:
+                            # add matched role
+                            await user.add_roles(server_role)
+                    response = "You got it boss! I've added you to the \"" + role + "\" roll."
+                    task_completed = True
+            # if the given role is not a known role
+            if not task_completed:
+                response = "I could not find a role with that name, sorry!"
+        await message.channel.send(response)
+        print("Done.")
+        return
+
+    async def leave_role(message):
+        print("Attempting to remove someone from a roll...")
+        self = RoleManager()
+        user = message.author
+        role_parse = message.content.lower().replace("leave role ", "")
+        using_id = True
+        task_completed = False
+        roles = self.__get_roles(message)
+        
+        # detect if the user is adding a role by name or by id
+        try:
+            role_parse = int(role_parse) - 1
+        except ValueError:
+            using_id = False
+
+        # if using id
+        if using_id:
+            # catches invalid ids
+            try:
+                # get the role name
+                selected_role = roles[role_parse] # need try except block here
+                print("\tRemoving role from user (by id): " + selected_role)
+                # sift through server roles for a match
+                for server_role in message.guild.roles:
+                    if server_role.name.lower() == selected_role:
+                        # add matched role
+                        await user.remove_roles(server_role)
+                response = "Can do! I've removed the role \"" + selected_role + "\" for you."
+            except IndexError:
+                print("\tIndex error. Aborting.")
+                response = "I could not find a role with that id, sorry!"
+        # if using name
+        else:
+            # need to make sure the given name is a roll, so look through known roles
+            for role in roles:
+                # if the given role is a known role
+                if role == role_parse:
+                    print("\tRemoving role from user: " + role)
+                    # sift through the server roles for a match
+                    for server_role in message.guild.roles:
+                        if server_role.name.lower() == role:
+                            # add matched role
+                            await user.remove_roles(server_role)
+                    response = "Can do! I've removed the role \"" + selected_role + "\" for you."
+                    task_completed = True
+            # if the given role is not a known role
+            if not task_completed:
+                response = "I could not find a role with that name, sorry!"
+        await message.channel.send(response)
+        print("Done.")
+        return
+
+
 
 client.run(TOKEN)
