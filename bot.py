@@ -48,13 +48,16 @@ async def on_message(message):
         response += "\t- List roles: Display roles available to join.\n"
         response += "\t- Join role [role name | roll id]: Join a roll based off its name or number (from the list roles command).\n"
         response += "\t- Leave role [role name | roll id]: Leave a roll based off its name or number (from the list roles command).\n"
-        response += "\t- **Add role [role name]**: Create a new roll and automatically join it.\n"
+        response += "\t- Add role [role name]: Create a new roll and automatically join it.\n"
         response += "\t- **Delete role [role name | roll id]**: Delete a roll based off its name or number (from the list roles command). Only the original creator of a roll can delete that roll.\n"
         response += "\t- Pogbot call poll. [poll prompt]: Create a yes / no poll with the given prompt.\n"
         response += "\nExample commands:\n"
         response += "\t\"Join role 3\"\n"
         response += "\t\"Leave role nsfw\"\n"
         response += "\t\"Pogbot Call Poll. Is fish pog better than normal pog?\"\n"
+        response += "\t\"Create role Gamers\"\n"
+        response += "\nCommand Aliases:\n"
+        response += "\tCreate Role == Add Role\n"
         response += "\n"
         response += "_Commands in bold are planned commands, and are not currently implimented._"
 
@@ -118,16 +121,21 @@ async def on_message(message):
     '''
     Join role command handling
     '''
-    if "join role" in message.content.lower():
+    if message.content.lower().startswith("join role"):
         await RoleManager.join_role(message)
-
-    
+ 
     '''
     Leave role command handling
     '''
-    if "leave role" in message.content.lower():
+    if message.content.lower().startswith("leave role"):
         await RoleManager.leave_role(message)
 
+    '''
+    Create role command handling
+    '''
+    if message.content.lower().startswith("add role") or message.content.lower().startswith("create role"):
+        await RoleManager.add_role(message)
+    
     '''
     Meme reactions. Adds a thumbs up and a thumbs down to posted memes. 
     Only adds reactions to messages compliant with the following restrictions:
@@ -176,11 +184,21 @@ async def on_message(message):
         # thumbs down
         await msg.add_reaction("👎")
 
+    '''
+    HIDDEN COMMAND: cloc
+    '''
+    if message.content == "cloc":
+        print("Clocing")
+        await message.channel.send(os.popen("cloc .").read()) 
+
+    # add a newline between each log, this should always be the last thing this function does.
+    print("-\n")
+
 '''
 RoleManager is a singleton.
 Private:
     __instance
-    __db_path (default is ./roles.owners)
+    __db_path (default is ./.owners)
     __roles_metadata
     __get_roles(message)
     __new__()
@@ -192,6 +210,9 @@ Public:
 '''
 class RoleManager(object):
     __instance = None
+    __db_path = "./.owners"
+    __roles_metadata = {}
+
     def __new__(cls):
         if RoleManager.__instance is None:
             RoleManager.__instance = object.__new__(cls)
@@ -211,7 +232,45 @@ class RoleManager(object):
         
         return roles
 
-    async def join_role(message):
+    async def add_role(message):
+        print("Attempting to create a new roll...")
+        self = RoleManager()
+        user = message.author
+        guild = client.get_guild(message.guild.id)
+        roles = self.__get_roles(message)
+        if message.content.lower().startswith("add"):
+            role_parse = message.content.lower().replace("add role ", "")
+        else:
+            role_parse = message.content.lower().replace("create role ", "")
+
+
+        print("\tAdding role: " + role_parse)
+
+        # avoid duplicate role names
+        if role_parse in roles:
+            print("\tRole already exists. Aborting.\nDone.")
+            await message.channel.send("A role with the name already exists! I'm not going to let you create duplicate roles.")
+            return
+
+        # create the role
+        await guild.create_role(name=role_parse)
+
+        # log the owner to a file so only they can delete it later
+        owners_file = open(self.__db_path, "a")
+        owners_file.write(user.name + " -- " + role_parse)
+        owners_file.close()
+
+        # add the user to the new role
+        message.content = "join role " +  role_parse
+        await RoleManager.join_role(message, silent=True)
+
+        # respond to the user
+        await message.channel.send("It's done! I've made the new role \"" + role_parse + "\". Don't worry, I've already added you to this new role. :)")
+
+        print("Done.")
+        return
+
+    async def join_role(message, silent=False):
         print("Attempting to add someone to a roll...")
         self = RoleManager()
         user = message.author
@@ -259,7 +318,8 @@ class RoleManager(object):
             # if the given role is not a known role
             if not task_completed:
                 response = "I could not find a role with that name, sorry!"
-        await message.channel.send(response)
+        if not silent:
+            await message.channel.send(response)
         print("Done.")
         return
 
