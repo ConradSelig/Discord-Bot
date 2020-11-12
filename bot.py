@@ -231,6 +231,8 @@ class RoleMetadata:
         cls.name = name
 
     def __eq__(cls, other):
+        if isinstance(other, str):
+            other = eval(other)
         if cls.guild == other.guild and cls.name == other.name:
             return True
         return False
@@ -305,10 +307,10 @@ class RoleManager(object):
         if deleted:
             await message.channel.send("No problem! I've deleted that role from the server.")
             del self.__roles_metadata[delete_index]
-            owners_files = open(self.__db_path, "w")
+            owners_file = open(self.__db_path, "w")
             for role in self.__roles_metadata:
                 owners_file.write(repr(role) + "\n")
-            owners_files.close()
+            owners_file.close()
             for role in guild.roles:
                 if role.name == delete_role.get_name():
                     await role.delete()
@@ -332,10 +334,11 @@ class RoleManager(object):
         print("\tAdding role: " + new_role.get_name())
 
         # avoid duplicate role names
-        if role_parse in self.__roles_metadata:
-            print("\tRole already exists. Aborting.\nDone.")
-            await message.channel.send("A role with the name already exists! I'm not going to let you create duplicate roles.")
-            return
+        for role in self.__roles_metadata:
+            if role_parse == repr(role):
+                print("\tRole already exists. Aborting.\nDone.")
+                await message.channel.send("A role with the name already exists! I'm not going to let you create duplicate roles.")
+                return
 
         # create the role
         await guild.create_role(name=new_role.get_name())
@@ -454,7 +457,7 @@ class RoleManager(object):
                         if server_role.name.lower() == role:
                             # add matched role
                             await user.remove_roles(server_role)
-                    response = "Can do! I've removed the role \"" + selected_role + "\" for you."
+                    response = "Can do! I've removed the role \"" + role_parse + "\" for you."
                     task_completed = True
             # if the given role is not a known role
             if not task_completed:
