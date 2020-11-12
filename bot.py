@@ -49,7 +49,7 @@ async def on_message(message):
         response += "\t- Join role [role name | roll id]: Join a roll based off its name or number (from the list roles command).\n"
         response += "\t- Leave role [role name | roll id]: Leave a roll based off its name or number (from the list roles command).\n"
         response += "\t- Add role [role name]: Create a new roll and automatically join it.\n"
-        response += "\t- **Delete role [role name | roll id]**: Delete a roll based off its name or number (from the list roles command). Only the original creator of a roll can delete that roll.\n"
+        response += "\t- Delete role [role name | roll id]: Delete a roll based off its name or number (from the list roles command). Only the original creator of a roll can delete that roll.\n"
         response += "\t- Pogbot call poll. [poll prompt]: Create a yes / no poll with the given prompt.\n"
         response += "\t- Pogbot stats for nerds: Print out some info about the project, nerdy!\n"
         response += "\nExample commands:\n"
@@ -136,7 +136,13 @@ async def on_message(message):
     '''
     if message.content.lower().startswith("add role") or message.content.lower().startswith("create role"):
         await RoleManager.add_role(message)
-    
+
+    '''
+    Delete role command handling
+    '''
+    if message.content.lower().startswith("delete role"):
+        await RoleManager.delete_role(message)
+
     '''
     Meme reactions. Adds a thumbs up and a thumbs down to posted memes. 
     Only adds reactions to messages compliant with the following restrictions:
@@ -159,6 +165,8 @@ async def on_message(message):
             await message.add_reaction("👍")
             # thumbs down
             await message.add_reaction("👎")
+            # pog
+            await message.add_reaction("<:Pog:776340088018960425>")
         print("\tDone.")
 
     '''
@@ -198,14 +206,53 @@ async def on_message(message):
     print("-\n")
 
 '''
+RoleMetadata will be used to handle avoiding duplicate roles in the same guild, as well as making sure
+that only the owner of a role can delete a role
+
+Private:
+    guild
+    owner
+    name
+Public:
+    __init__()
+    __eq__()
+    __repr__()
+    __str__()
+    get_name()
+'''
+class RoleMetadata:
+    guild = ""
+    owner = ""
+    name = ""
+
+    def __init__(cls, guild, owner, name):
+        cls.guild = guild
+        cls.owner = owner
+        cls.name = name
+
+    def __eq__(cls, other):
+        if cls.guild == other.guild and cls.name == other.name:
+            return True
+        return False
+
+    def __repr__(cls):
+        return "RoleMetadata(\"" + cls.guild + "\", \"" + cls.owner + "\", \"" + cls.name + "\")"
+
+    def __str__(cls):
+        return cls.guild + " => " + cls.name + " (" + cls.owner + ")"
+
+    def get_name(self):
+        return self.name
+
+'''
 RoleManager is a singleton.
 Private:
     __instance
     __db_path (default is ./.owners)
     __roles_metadata
     __get_roles(message)
-    __new__()
 Public:
+    __new__()
     join_role(message)
     leave_role(message)
     add_role(message)
@@ -214,11 +261,15 @@ Public:
 class RoleManager(object):
     __instance = None
     __db_path = "./.owners"
-    __roles_metadata = {}
+    __roles_metadata = []
 
     def __new__(cls):
         if RoleManager.__instance is None:
             RoleManager.__instance = object.__new__(cls)
+            owners_file = open(RoleManager.__instance.__db_path, "r")
+            for line in owners_file:
+                RoleManager.__instance.__roles_metadata.append(eval(line))
+            owners_file.close()
         return RoleManager.__instance
 
     def __get_roles(self, message):
@@ -235,40 +286,74 @@ class RoleManager(object):
         
         return roles
 
+    async def delete_role(message):
+        print("Attempting to delete a role...")
+        self = RoleManager()
+        user = message.author
+        guild = client.get_guild(message.guild.id)
+        role_parse = message.content.lower().replace("delete role ", "")
+        delete_role = RoleMetadata(guild.name, user.name, role_parse)
+        deleted = False
+        delete_index = 0
+
+        for i, role in enumerate(self.__roles_metadata):
+            if delete_role == role:
+                print("Deleting role: " + str(delete_role))
+                delete_index = i
+                deleted = True
+
+        if deleted:
+            await message.channel.send("No problem! I've deleted that role from the server.")
+            del self.__roles_metadata[delete_index]
+            owners_files = open(self.__db_path, "w")
+            for role in self.__roles_metadata:
+                owners_file.write(repr(role) + "\n")
+            owners_files.close()
+            for role in guild.roles:
+                if role.name == delete_role.get_name():
+                    await role.delete()
+        else:
+            await message.channel.send("There was a problem deleting the role \"" + delete_role.get_name() + "\". Maybe the role doesn't exist, or you are not the original creator.")
+        print("Done.")
+        return
+
     async def add_role(message):
         print("Attempting to create a new roll...")
         self = RoleManager()
         user = message.author
         guild = client.get_guild(message.guild.id)
-        roles = self.__get_roles(message)
         if message.content.lower().startswith("add"):
             role_parse = message.content.lower().replace("add role ", "")
         else:
             role_parse = message.content.lower().replace("create role ", "")
 
 
-        print("\tAdding role: " + role_parse)
+        new_role = RoleMetadata(guild.name, user.name, role_parse)
+        print("\tAdding role: " + new_role.get_name())
 
         # avoid duplicate role names
-        if role_parse in roles:
+        if role_parse in self.__roles_metadata:
             print("\tRole already exists. Aborting.\nDone.")
             await message.channel.send("A role with the name already exists! I'm not going to let you create duplicate roles.")
             return
 
         # create the role
-        await guild.create_role(name=role_parse)
+        await guild.create_role(name=new_role.get_name())
 
         # log the owner to a file so only they can delete it later
         owners_file = open(self.__db_path, "a")
-        owners_file.write(user.name + " -- " + role_parse)
+        owners_file.write(repr(new_role) + "\n")
         owners_file.close()
 
         # add the user to the new role
-        message.content = "join role " +  role_parse
+        message.content = "join role " +  new_role.get_name()
         await RoleManager.join_role(message, silent=True)
 
+        # save the new role to memory right away
+        self.__roles_metadata.append(new_role)
+
         # respond to the user
-        await message.channel.send("It's done! I've made the new role \"" + role_parse + "\". Don't worry, I've already added you to this new role. :)")
+        await message.channel.send("It's done! I've made the new role \"" + new_role.get_name() + "\". Don't worry, I've already added you to this new role. :)")
 
         print("Done.")
         return
