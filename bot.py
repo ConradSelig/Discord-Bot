@@ -167,6 +167,8 @@ async def on_message(message):
             await message.add_reaction("👎")
             # pog
             await message.add_reaction("<:Pog:776340088018960425>")
+            # 100
+            await message.add_reaction("<:onehundredfake:778094279696318475>")
         print("\tDone.")
 
     '''
