@@ -85,6 +85,20 @@ async def on_message(message):
     '''
     if message.content.lower() == "pog count":
         await message.channel.send("I currently know " + str(len(os.listdir("./Pog_Images/"))) + " different ways to Pog.")
+    
+    '''
+    Show all Pog images
+    '''
+    if message.content.lower() == "pogbot show all pogs":
+        # get a list of all possible images
+        pog_images = os.listdir("./Pog_Images/")
+
+        print("Displaying all Pogs.")
+        for index, pog in enumerate(pog_images):
+            print("\tPogging! " + str(index))
+            # post the next image
+            await message.channel.send(file=discord.File("./Pog_Images/" + pog_images[index]))
+        print("Done.")
 
     '''
     Save a new Pog reaction
@@ -181,7 +195,7 @@ async def on_message(message):
             # pog
             await message.add_reaction("<:Pog:776340088018960425>")
             # 100
-            await message.add_reaction("<:onehundred:778094279696318475>")
+            # await message.add_reaction("<:onehundred:778094279696318475>")
         print("\tDone.")
 
     '''
