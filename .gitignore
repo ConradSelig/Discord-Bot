@@ -1,2 +1,4 @@
 .env
 .owners
+/Archive_Images/*
+/Archive/*

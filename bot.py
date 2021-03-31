@@ -9,6 +9,7 @@ from discord.ext.commands import Bot
 from discord.ext import commands
 from discord.utils import get
 
+from pathlib import Path
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 
@@ -33,8 +34,26 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    guild = message.guild
     channel = message.channel
     category = channel.category
+    clean_guild = re.match("^.*?([A-Za-z0-9_ ]+).*", str(guild)).group(1).replace(" ", "_")
+    clean_channel = re.match("^.*?([A-Za-z0-9_ ]+).*", str(channel)).group(1).replace(" ", "_")
+    clean_category = re.match("^.*?([A-Za-z0-9_ ]+).*", str(category)).group(1).replace(" ", "_")
+    archive_path = "./Archive/" + clean_guild + "/" + clean_category
+
+    Path(archive_path).mkdir(parents=True, exist_ok=True)
+    with open(archive_path + "/" + clean_channel + ".ini", "a") as fout:
+        fout.write("[" + str(message.id) + "]" + "\n")
+        fout.write("author=" + str(message.author) + "\n")
+        fout.write("created_at=" + str(message.created_at) + "\n")
+        fout.write("content=" + str(message.content) + "\n")
+        if len(message.attachments) > 0:
+            for i, attachment in enumerate(range(len(message.attachments))):
+                await message.attachments[i].save("./Archive_Images/" + str(message.id) + "-" + str(i) + "-" + message.attachments[i].filename)
+            fout.write("attachments=" + str(len(message.attachments)) + "\n") 
+        fout.write("\n")
+    print("New Message. Logging.")
 
     '''
     Print the help text
@@ -54,6 +73,7 @@ async def on_message(message):
         response += "\t- Pogbot call poll. [poll prompt]: Create a yes / no poll with the given prompt.\n"
         response += "\t- Pogbot add pog: Command must have an image attached. Will automatically add the attached image to the Pog reactions.\n"
         response += "\t- Pogbot stats for nerds: Print out some info about the project, nerdy!\n"
+        response += "\t- \"Good Bot\": Compliment pogbot!\n"
         response += "\nExample commands:\n"
         response += "\t\"Join role 3\"\n"
         response += "\t\"Leave role nsfw\"\n"
@@ -61,6 +81,7 @@ async def on_message(message):
         response += "\t\"Create role Gamers\"\n"
         response += "\nCommand Aliases:\n"
         response += "\tCreate Role == Add Role\n"
+        response += "\tThanks Pogbot == Good Bot\n"
         response += "\n"
         response += "_Commands in bold are planned commands, and are not currently implimented._"
 
@@ -70,7 +91,7 @@ async def on_message(message):
     '''
     Post a pog image to pog messages. An image is only posted if the only text in the image is "pog" (lowered)
     '''
-    if message.content.lower() == 'pog':
+    if "pog" in message.content.lower() and "pogbot" not in message.content.lower():
         # get a list of all possible images
         pog_images = os.listdir("./Pog_Images/")
         # get a random index in the list
@@ -79,6 +100,16 @@ async def on_message(message):
         print("Pogging! " + str(index))
         # post the random image
         await message.channel.send(file=discord.File("./Pog_Images/" + pog_images[index]))
+
+    '''
+    Give a response to the "Good Bot" command
+    '''
+    if message.content.lower() == "good bot" or message.content.lower() == "thanks pogbot":
+        response_images = os.listdir("./Response_Images/")
+        index = random.randint(0, len(response_images) - 1)
+        print("Pogbot got a compliment, time to respond! " + str(index))
+        await message.channel.send(file=discord.File("./Response_Images/" + response_images[index]))
+
 
     '''
     Print how many different pog reactions there are
@@ -232,7 +263,7 @@ async def on_message(message):
         await message.channel.send(os.popen("tree .").read()) 
 
     # add a newline between each log, this should always be the last thing this function does.
-    print("-\n")
+    print("Done.\n")
 
 '''
 RoleMetadata will be used to handle avoiding duplicate roles in the same guild, as well as making sure
